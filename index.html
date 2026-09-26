@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>พลิกไพ่หาคำ ฝึกการอ่าน ฝึกการผสมคำ และจำสระ</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Mali', 'sans-serif'],
+                    },
+                    colors: {
+                        pastel: {
+                            blue: '#DDEEFE',
+                            pink: '#FAD1E6',
+                            yellow: '#FEF0CB',
+                            green: '#D4F0E1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* CSS for 3D Card Flip Animation */
+        .card-container {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden; /* Safari */
+            border-radius: 1.5rem; /* rounded-3xl */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-back {
+            /* Back of the card (Shows initially) - Pink-Blue Gradient */
+            background: linear-gradient(135deg, #FAD1E6 0%, #a2c2e8 100%);
+            border: 4px solid #ffffff;
+        }
+
+        .card-front {
+            /* Front of the card (Shows when flipped) */
+            background-color: #ffffff;
+            transform: rotateY(180deg);
+            border: 4px solid #DDEEFE;
+            text-align: center;
+            padding: 0.5rem;
+        }
+
+        /* Green Glow Effect for Matched Cards */
+        .card-container.matched .card-front {
+            border-color: #10B981; /* Tailwind Emerald-500 */
+            box-shadow: 0 0 15px 5px rgba(16, 185, 129, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .card-container.matched {
+            pointer-events: none;
+        }
+
+        /* Responsive typography for cards */
+        @media (max-width: 640px) {
+            .card-text { font-size: 1.25rem; }
+        }
+        @media (min-width: 641px) {
+            .card-text { font-size: 1.875rem; }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-indigo-100 via-pastel-blue to-emerald-50 text-slate-700 font-sans p-2 sm:p-4 md:p-8 flex flex-col items-center">
+
+    <div class="max-w-4xl w-full">
+        
+        <!-- Header & Mode Selection -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-indigo-600 mb-2 drop-shadow-sm">
+                ✨ พลิกไพ่หาคำ ✨
+            </h1>
+            <p class="text-lg text-slate-600 mb-4">ฝึกการอ่าน ฝึกการผสมคำ และจำสระ</p>
+            
+            <div class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-4" id="mode-selector">
+                <button onclick="setMode(1)" class="mode-btn px-4 py-2 rounded-full bg-pink-400 text-white font-semibold shadow hover:-translate-y-1 transition-transform border-2 border-pink-500 active-mode" id="btn-mode-1">
+                    📖 1. จำสระไทย
+                </button>
+                <button onclick="setMode(2)" class="mode-btn px-4 py-2 rounded-full bg-blue-400 text-white font-semibold shadow hover:-translate-y-1 transition-transform border-2 border-transparent" id="btn-mode-2">
+                    🧩 2. ฝึกผสมคำ
+                </button>
+                <button onclick="setMode(3)" class="mode-btn px-4 py-2 rounded-full bg-emerald-400 text-white font-semibold shadow hover:-translate-y-1 transition-transform border-2 border-transparent" id="btn-mode-3">
+                    ภาพและคำ
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard (Score, Timer, Controls) -->
+        <div class="bg-white/60 backdrop-blur-md rounded-2xl p-4 shadow-sm mb-6 flex flex-wrap justify-between items-center gap-4">
+            
+            <div class="flex items-center gap-3">
+                <!-- Timer Badge -->
+                <div class="flex items-center gap-2 bg-yellow-100 border-2 border-yellow-400 text-yellow-700 px-4 py-2 rounded-full font-bold shadow-inner">
+                    <i class="fa-solid fa-clock"></i>
+                    <span id="timer-display">00:00</span>
+                </div>
+                
+                <!-- Score Badge -->
+                <div class="flex items-center gap-2 bg-blue-100 border-2 border-blue-400 text-blue-700 px-4 py-2 rounded-full font-bold shadow-inner">
+                    <i class="fa-solid fa-star text-yellow-500"></i>
+                    <span id="score-display">0</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Audio Toggle -->
+                <button id="audio-toggle" onclick="toggleAudio()" class="w-12 h-12 bg-white rounded-full text-indigo-500 text-xl shadow hover:bg-slate-50 transition-colors flex justify-center items-center">
+                    <i class="fa-solid fa-volume-up" id="audio-icon"></i>
+                </button>
+
+                <!-- Restart Button -->
+                <button onclick="startGame()" class="flex items-center gap-2 bg-red-400 hover:bg-red-500 text-white px-5 py-2 rounded-full font-bold shadow-md hover:-translate-y-0.5 transition-all">
+                    <i class="fa-solid fa-rotate-right"></i> เริ่มใหม่
+                </button>
+            </div>
+            
+        </div>
+
+        <!-- Game Grid -->
+        <div id="game-grid" class="grid grid-cols-4 gap-2 sm:gap-4 w-full aspect-square md:aspect-[4/3] max-h-[70vh] mx-auto">
+            <!-- Cards will be injected here via JavaScript -->
+        </div>
+
+    </div>
+
+    <!-- Win Modal (Hidden by default) -->
+    <div id="win-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl transform scale-90 transition-transform duration-300" id="win-modal-content">
+            <h2 class="text-4xl font-bold text-emerald-500 mb-2">🎉 เก่งมาก! 🎉</h2>
+            <p class="text-xl text-slate-600 mb-6">หนูทำสำเร็จแล้ว!</p>
+            
+            <div class="space-y-4 mb-8 text-lg font-medium text-slate-700">
+                <div class="flex justify-between items-center bg-emerald-50 p-3 rounded-xl">
+                    <span><i class="fa-solid fa-clock text-yellow-500 mr-2"></i> เวลาที่ใช้:</span>
+                    <span id="final-time" class="font-bold text-emerald-600">00:00</span>
+                </div>
+                <div class="flex justify-between items-center bg-blue-50 p-3 rounded-xl">
+                    <span><i class="fa-solid fa-star text-yellow-500 mr-2"></i> คะแนน:</span>
+                    <span id="final-score" class="font-bold text-blue-600">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-pink-50 p-3 rounded-xl">
+                    <span><i class="fa-solid fa-hand-pointer text-pink-400 mr-2"></i> พลิกไพ่ไปทั้งหมด:</span>
+                    <span id="final-flips" class="font-bold text-pink-600">0 ครั้ง</span>
+                </div>
+            </div>
+
+            <button onclick="closeModalAndRestart()" class="w-full bg-emerald-400 hover:bg-emerald-500 text-white text-xl font-bold py-3 rounded-full shadow-lg hover:-translate-y-1 transition-all">
+                เล่นอีกครั้ง! 🚀
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME DATA ---
+        const gameModes = {
+            1: [ // Mode 1: จำสระไทย (Vowels)
+                { id: 1, type: 'symbol', text: 'ะ', sound: 'สระอะ' }, { id: 1, type: 'word', text: 'สระอะ', sound: 'สระอะ' },
+                { id: 2, type: 'symbol', text: 'า', sound: 'สระอา' }, { id: 2, type: 'word', text: 'สระอา', sound: 'สระอา' },
+                { id: 3, type: 'symbol', text: 'ิ', sound: 'สระอิ' }, { id: 3, type: 'word', text: 'สระอิ', sound: 'สระอิ' },
+                { id: 4, type: 'symbol', text: 'ี', sound: 'สระอี' }, { id: 4, type: 'word', text: 'สระอี', sound: 'สระอี' },
+                { id: 5, type: 'symbol', text: 'ุ', sound: 'สระอุ' }, { id: 5, type: 'word', text: 'สระอุ', sound: 'สระอุ' },
+                { id: 6, type: 'symbol', text: 'ู', sound: 'สระอู' }, { id: 6, type: 'word', text: 'สระอู', sound: 'สระอู' },
+                { id: 7, type: 'symbol', text: 'เ', sound: 'สระเอ' }, { id: 7, type: 'word', text: 'สระเอ', sound: 'สระเอ' },
+                { id: 8, type: 'symbol', text: 'โ', sound: 'สระโอ' }, { id: 8, type: 'word', text: 'สระโอ', sound: 'สระโอ' },
+            ],
+            2: [ // Mode 2: ฝึกผสมคำ (Blending)
+                { id: 1, type: 'spell', text: 'ก + า', sound: 'กอ อา กา' }, { id: 1, type: 'word', text: 'กา 🐦', sound: 'กา' },
+                { id: 2, type: 'spell', text: 'ต + า', sound: 'ตอ อา ตา' }, { id: 2, type: 'word', text: 'ตา 👁️', sound: 'ตา' },
+                { id: 3, type: 'spell', text: 'ป + ู', sound: 'ปอ อู ปู' }, { id: 3, type: 'word', text: 'ปู 🦀', sound: 'ปู' },
+                { id: 4, type: 'spell', text: 'ง + ู', sound: 'งอ อู งู' }, { id: 4, type: 'word', text: 'งู 🐍', sound: 'งู' },
+                { id: 5, type: 'spell', text: 'ท + า', sound: 'ทอ อา ทา' }, { id: 5, type: 'word', text: 'ทา 🎨', sound: 'ทาสี' },
+                { id: 6, type: 'spell', text: 'ข + า', sound: 'ขอ อา ขา' }, { id: 6, type: 'word', text: 'ขา 🦵', sound: 'ขา' },
+                { id: 7, type: 'spell', text: 'ม + ื + อ', sound: 'มอ อือ มือ' }, { id: 7, type: 'word', text: 'มือ 🖐️', sound: 'มือ' },
+                { id: 8, type: 'spell', text: 'ด + ี', sound: 'ดอ อี ดี' }, { id: 8, type: 'word', text: 'ดี 👍', sound: 'ดีมาก' },
+            ],
+            3: [ // Mode 3: คำและภาพ (Words & Pics)
+                { id: 1, type: 'word', text: 'กะทิ', sound: 'กะทิ' }, { id: 1, type: 'emoji', text: '🥥<br>กะทิ', sound: 'กะทิ' },
+                { id: 2, type: 'word', text: 'นาฬิกา', sound: 'นาฬิกา' }, { id: 2, type: 'emoji', text: '⏰<br>นาฬิกา', sound: 'นาฬิกา' },
+                { id: 3, type: 'word', text: 'มะลิ', sound: 'มะลิ' }, { id: 3, type: 'emoji', text: '🌼<br>มะลิ', sound: 'มะลิ' },
+                { id: 4, type: 'word', text: 'ทะเล', sound: 'ทะเล' }, { id: 4, type: 'emoji', text: '🌊<br>ทะเล', sound: 'ทะเล' },
+                { id: 5, type: 'word', text: 'ภูเขา', sound: 'ภูเขา' }, { id: 5, type: 'emoji', text: '⛰️<br>ภูเขา', sound: 'ภูเขา' },
+                { id: 6, type: 'word', text: 'ช้าง', sound: 'ช้าง' }, { id: 6, type: 'emoji', text: '🐘<br>ช้าง', sound: 'ช้าง' },
+                { id: 7, type: 'word', text: 'ม้า', sound: 'ม้า' }, { id: 7, type: 'emoji', text: '🐎<br>ม้า', sound: 'ม้า' },
+                { id: 8, type: 'word', text: 'ปลา', sound: 'ปลา' }, { id: 8, type: 'emoji', text: '🐟<br>ปลา', sound: 'ปลา' },
+            ]
+        };
+
+        // --- GAME STATE ---
+        let currentMode = 1;
+        let deck = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let score = 0;
+        let flipCount = 0;
+        
+        let timerInterval = null;
+        let startTime = 0;
+        let isPlaying = false;
+        
+        let isAudioEnabled = true;
+        let isBoardLocked = false; // Prevent clicking while animating
+
+        // --- DOM ELEMENTS ---
+        const gridElement = document.getElementById('game-grid');
+        const scoreDisplay = document.getElementById('score-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const audioIcon = document.getElementById('audio-icon');
+        const modal = document.getElementById('win-modal');
+        const modalContent = document.getElementById('win-modal-content');
+
+        // --- AUDIO SYSTEM ---
+        let audioCtx;
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Synthesizer for Sound Effects
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (!isAudioEnabled) return;
+            initAudioContext();
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) { console.error("Audio error", e); }
+        }
+
+        const sfx = {
+            flip: () => playTone(500, 'sine', 0.1, 0.05),
+            match: () => {
+                playTone(600, 'sine', 0.1, 0.1);
+                setTimeout(() => playTone(800, 'sine', 0.2, 0.1), 100);
+            },
+            mismatch: () => {
+                playTone(300, 'triangle', 0.1, 0.1);
+                setTimeout(() => playTone(250, 'triangle', 0.2, 0.1), 100);
+            },
+            win: () => {
+                const notes = [400, 500, 600, 800];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => playTone(freq, 'square', 0.15, 0.1), i * 150);
+                });
+            }
+        };
+
+        // Text-to-Speech (Thai)
+        const praiseWords = ["เก่งมาก", "เยี่ยมไปเลย", "ถูกต้อง", "ยอดเยี่ยม"];
+        function speakTTS(text, isPraise = false) {
+            if (!isAudioEnabled || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel(); // Stop current speech
+            
+            let textToSpeak = text;
+            if (isPraise) {
+                textToSpeak = praiseWords[Math.floor(Math.random() * praiseWords.length)];
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'th-TH';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1; // Slightly higher pitch for kids
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            if (isAudioEnabled) {
+                audioIcon.classList.remove('fa-volume-xmark');
+                audioIcon.classList.add('fa-volume-up');
+                audioIcon.parentElement.classList.remove('text-slate-400');
+                audioIcon.parentElement.classList.add('text-indigo-500');
+                initAudioContext();
+                sfx.flip();
+            } else {
+                audioIcon.classList.remove('fa-volume-up');
+                audioIcon.classList.add('fa-volume-xmark');
+                audioIcon.parentElement.classList.add('text-slate-400');
+                audioIcon.parentElement.classList.remove('text-indigo-500');
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        // --- CORE GAME LOGIC ---
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        }
+
+        function updateTimer() {
+            if (!isPlaying) return;
+            const elapsed = Date.now() - startTime;
+            timerDisplay.textContent = formatTime(elapsed);
+        }
+
+        // Fisher-Yates Shuffle Algorithm
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function setMode(modeId) {
+            currentMode = modeId;
+            // Update UI buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('border-pink-500', 'border-blue-500', 'border-emerald-500');
+                btn.classList.add('border-transparent');
+            });
+            
+            const activeBtn = document.getElementById(`btn-mode-${modeId}`);
+            if(modeId === 1) activeBtn.classList.add('border-pink-500');
+            if(modeId === 2) activeBtn.classList.add('border-blue-500');
+            if(modeId === 3) activeBtn.classList.add('border-emerald-500');
+
+            startGame();
+        }
+
+        function startGame() {
+            // Reset state
+            clearInterval(timerInterval);
+            timerDisplay.textContent = "00:00";
+            scoreDisplay.textContent = "0";
+            score = 0;
+            flipCount = 0;
+            matchedPairs = 0;
+            flippedCards = [];
+            isPlaying = false;
+            isBoardLocked = false;
+
+            // Load and shuffle deck
+            deck = shuffleArray([...gameModes[currentMode]]);
+            
+            renderGrid();
+        }
+
+        function renderGrid() {
+            gridElement.innerHTML = '';
+            
+            deck.forEach((card, index) => {
+                // Create Card Container
+                const cardEl = document.createElement('div');
+                cardEl.classList.add('card-container', 'w-full', 'h-full');
+                cardEl.dataset.id = card.id;
+                cardEl.dataset.index = index;
+                
+                // Add HTML structure for 3D flip
+                cardEl.innerHTML = `
+                    <div class="card-inner w-full h-full">
+                        <div class="card-back flex items-center justify-center">
+                            <span class="text-4xl sm:text-5xl text-white font-bold opacity-80 drop-shadow-md">?</span>
+                        </div>
+                        <div class="card-front flex items-center justify-center">
+                            <span class="card-text font-bold text-slate-700 leading-tight">${card.text}</span>
+                        </div>
+                    </div>
+                `;
+
+                cardEl.addEventListener('click', () => handleCardClick(cardEl, card));
+                gridElement.appendChild(cardEl);
+            });
+        }
+
+        function handleCardClick(cardEl, cardData) {
+            // Prevent clicking if locked, already flipped, or matched
+            if (isBoardLocked || cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) {
+                return;
+            }
+
+            // Start timer on first interaction
+            if (!isPlaying) {
+                initAudioContext(); // Ensure audio context is ready on first click
+                isPlaying = true;
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+
+            // Flip Card
+            sfx.flip();
+            cardEl.classList.add('flipped');
+            speakTTS(cardData.sound);
+            flippedCards.push({ element: cardEl, data: cardData });
+            flipCount++;
+
+            // Check Match if 2 cards flipped
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            isBoardLocked = true;
+            const [card1, card2] = flippedCards;
+
+            if (card1.data.id === card2.data.id) {
+                // MATCHED
+                setTimeout(() => {
+                    card1.element.classList.add('matched');
+                    card2.element.classList.add('matched');
+                    sfx.match();
+                    speakTTS('', true); // Praise
+                    
+                    score += 10;
+                    scoreDisplay.textContent = score;
+                    matchedPairs++;
+                    
+                    resetFlippedCards();
+                    checkWin();
+                }, 400); // Wait slightly for flip animation to finish
+            } else {
+                // NOT MATCHED
+                setTimeout(() => {
+                    card1.element.classList.remove('flipped');
+                    card2.element.classList.remove('flipped');
+                    sfx.mismatch();
+                    resetFlippedCards();
+                }, 1000); // Show cards for 1 second before flipping back
+            }
+        }
+
+        function resetFlippedCards() {
+            flippedCards = [];
+            isBoardLocked = false;
+        }
+
+        function checkWin() {
+            if (matchedPairs === 8) { // 8 pairs total
+                clearInterval(timerInterval);
+                isPlaying = false;
+                
+                setTimeout(() => {
+                    sfx.win();
+                    showWinModal();
+                    triggerConfetti();
+                }, 500);
+            }
+        }
+
+        function showWinModal() {
+            const elapsed = Date.now() - startTime;
+            document.getElementById('final-time').textContent = formatTime(elapsed);
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-flips').textContent = `${flipCount} ครั้ง`;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Trigger reflow for transition
+            void modal.offsetWidth; 
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-90');
+            modalContent.classList.add('scale-100');
+        }
+
+        function closeModalAndRestart() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-90');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                startGame();
+            }, 300);
+        }
+
+        function triggerConfetti() {
+            if (typeof window.confetti === 'function') {
+                const duration = 3000;
+                const end = Date.now() + duration;
+
+                (function frame() {
+                    confetti({
+                        particleCount: 5,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#FAD1E6', '#DDEEFE', '#D4F0E1', '#FEF0CB']
+                    });
+                    confetti({
+                        particleCount: 5,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#FAD1E6', '#DDEEFE', '#D4F0E1', '#FEF0CB']
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }());
+            }
+        }
+
+        // Initialize game on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Setup initial active mode styles
+            setMode(1); 
+        });
+
+    </script>
+</body>
+</html>
